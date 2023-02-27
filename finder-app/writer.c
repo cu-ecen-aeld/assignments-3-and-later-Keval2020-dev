@@ -20,10 +20,12 @@ int main( int argc , char * argv[] )
     if (argc == 3)
     {
     	syslog(LOG_DEBUG, "Writing %s to %s", argv[2], argv[1]);    
- 
- 	if (stat(argv[1], Buffer) != 0) //check path directory
+ 	
+ 	
+ 	if (stat(argv[1], Buffer) == 0) //check if directory
  	{
            syslog(LOG_ERR, "%s is not a valid path", argv[1]);
+                   
            return 1;
  	}
  	else 
@@ -41,7 +43,7 @@ int main( int argc , char * argv[] )
     {
        //Log as error
     	syslog(LOG_USER, "invalid argument, should receive filesdir and searchstr");
-        return 1;
+      	return 1;
     
     }
     
