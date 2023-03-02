@@ -1,4 +1,11 @@
+
 #include "systemcalls.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/stat.h> 
+#include <fcntl.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -10,14 +17,21 @@
 bool do_system(const char *cmd)
 {
 
+  char result;
 /*
  * TODO  add your code here
  *  Call the system() function with the command set in the cmd
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+    result = system(cmd);
+    
+    if(result != 0)
+ 	return false;
+    else 
+    	return true;   
+    
+    
 }
 
 /**
@@ -36,6 +50,7 @@ bool do_system(const char *cmd)
 
 bool do_exec(int count, ...)
 {
+    
     va_list args;
     va_start(args, count);
     char * command[count+1];
@@ -43,11 +58,13 @@ bool do_exec(int count, ...)
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
+        
+        //printf("%s \n\r",command[i]);
     }
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    //command[count] = command[count];
 
 /*
  * TODO:
@@ -57,11 +74,36 @@ bool do_exec(int count, ...)
  *   (first argument to execv), and use the remaining arguments
  *   as second argument to the execv() command.
  *
-*/
-
+*/  
     va_end(args);
+    pid_t pid = fork();
 
-    return true;
+    if (pid == -1) //fork failed
+    {
+        return false;
+    }
+    else if (pid == 0) //child process created
+    {
+        execv(command[0], command); //pass the path and argument list
+        
+        exit(-1); //execution failed
+    }
+
+    int status;
+    waitpid(pid, &status, 0); //wait to for child process to finish
+    
+    
+    //extract pid status
+    if (WIFEXITED(status)) 
+    {
+        if(WEXITSTATUS(status) == 0)
+           return true;
+        else 
+           return false;
+    }
+  
+  return false;	   
+    
 }
 
 /**
@@ -93,7 +135,57 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
+    
     va_end(args);
+    
+   
+    
+   int fd = creat(outputfile,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+   
+   if(fd<0)
+   {
+      perror("file opn failed");
+      
+      return false;
+      
+   } 
+    pid_t pid = fork();
+   
+    if (pid == -1) //fork failed
+    {
+       perror("fork failed");
+       close(fd);
+       return false;
+    }
+    else if (pid == 0) //child process created
+    {
+      if(dup2(fd,1) < 0)
+      {
+        perror("dup2 failed");
+        close(fd);	
+        return false;
+      }
+     
+       close(fd);
+       execv(command[0], command); //pass the path and argument list
+       perror("execv failed"); 
+       return false;
+    }
+    else close(fd);
 
+    int status;
+    waitpid(pid, &status, 0); //wait to for child process to finish
+    
+    
+    //extract pid status
+    if (WIFEXITED(status)) 
+    {
+        if(WEXITSTATUS(status) == 0)
+           return true;
+        else 
+           return false;
+    }
+  
+ 
     return true;
 }
