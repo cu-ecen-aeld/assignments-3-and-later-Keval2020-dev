@@ -1,33 +1,64 @@
 #include "threading.h"
-#include <unistd.h>
-#include <stdlib.h>
+#include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-// Optional: use these functions to add debug or error prints to your application
-#define DEBUG_LOG(msg,...)
-//#define DEBUG_LOG(msg,...) printf("threading: " msg "\n" , ##__VA_ARGS__)
-#define ERROR_LOG(msg,...) printf("threading ERROR: " msg "\n" , ##__VA_ARGS__)
+
+#define DEBUG_LOG(msg,...) printf("Dbg: " msg "\n" , ##__VA_ARGS__)
+#define ERROR_LOG(msg,...) printf("Err: " msg "\n" , ##__VA_ARGS__)
 
 void* threadfunc(void* thread_param)
 {
+  struct thread_data *tdata = (struct thread_data *) thread_param;
+  
+  
+  tdata->thread_complete_success = true;
+  
+  DEBUG_LOG("Lock Acquire Waiting %d ms", tdata->wait_to_obtain_ms);
+  usleep(1000 * tdata->wait_to_obtain_ms);
+  
+  DEBUG_LOG("Getting Lock");
+  
+  if (pthread_mutex_lock(tdata->mutex) != 0) 
+  {
+    ERROR_LOG("Lock Ownership transfer failed");
+    tdata->thread_complete_success = false;
+    return thread_param;
+  };
+  
+  DEBUG_LOG("Relasing lock %d ms", tdata->wait_to_release_ms);
+  usleep(1000 * tdata->wait_to_release_ms);
+  
+  DEBUG_LOG("Releasing lock");
+  if (pthread_mutex_unlock(tdata->mutex) != 0) 
+  {
+    ERROR_LOG("Lock Ownership transfer failed");
+    tdata->thread_complete_success = false;
+    return thread_param;
+  };
 
-    // TODO: wait, obtain mutex, wait, release mutex as described by thread_data structure
-    // hint: use a cast like the one below to obtain thread arguments from your parameter
-    //struct thread_data* thread_func_args = (struct thread_data *) thread_param;
+    
     return thread_param;
 }
 
 
 bool start_thread_obtaining_mutex(pthread_t *thread, pthread_mutex_t *mutex,int wait_to_obtain_ms, int wait_to_release_ms)
-{
-    /**
-     * TODO: allocate memory for thread_data, setup mutex and wait arguments, pass thread_data to created thread
-     * using threadfunc() as entry point.
-     *
-     * return true if successful.
-     *
-     * See implementation details in threading.h file comment block
-     */
-    return false;
+{ 
+   struct thread_data *tdata1 = (struct thread_data *)malloc(sizeof(struct thread_data));
+   
+    if (tdata1 == NULL) 
+    {
+        return false;
+    }
+		
+    
+    tdata1->mutex = mutex;
+    tdata1->wait_to_obtain_ms = wait_to_obtain_ms;
+    tdata1->wait_to_release_ms = wait_to_release_ms;			
+		
+
+    return pthread_create(thread, NULL, threadfunc, tdata1) == 0;
 }
 
